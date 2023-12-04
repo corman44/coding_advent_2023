@@ -1,33 +1,39 @@
 // Day2 Problem:
 
 /*
-Day 2: Cube Conundrum ---
-You're launched high into the atmosphere! The apex of your trajectory just barely reaches the surface of a large island floating in the sky. You gently land in a fluffy pile of leaves. It's quite cold, but you don't see much snow. An Elf runs over to greet you.
+--- Day 4: Scratchcards ---
+The gondola takes you up. Strangely, though, the ground doesn't seem to be coming with you; you're not climbing a mountain. As the circle of Snow Island recedes below you, an entire new landmass suddenly appears above you! The gondola carries you to the surface of the new island and lurches into the station.
 
-The Elf explains that you've arrived at Snow Island and apologizes for the lack of snow. He'll be happy to explain the situation, but it's a bit of a walk, so you have some time. They don't get many visitors up here; would you like to play a game in the meantime?
+As you exit the gondola, the first thing you notice is that the air here is much warmer than it was on Snow Island. It's also quite humid. Is this where the water source is?
 
-As you walk, the Elf shows you a small bag and some cubes which are either red, green, or blue. Each time you play this game, he will hide a secret number of cubes of each color in the bag, and your goal is to figure out information about the number of cubes.
+The next thing you notice is an Elf sitting on the floor across the station in what seems to be a pile of colorful square cards.
 
-To get information, once a bag has been loaded with cubes, the Elf will reach into the bag, grab a handful of random cubes, show them to you, and then put them back in the bag. He'll do this a few times per game.
+"Oh! Hello!" The Elf excitedly runs over to you. "How may I be of service?" You ask about water sources.
 
-You play several games and record the information from each game (your puzzle input). Each game is listed with its ID number (like the 11 in Game 11: ...) followed by a semicolon-separated list of subsets of cubes that were revealed from the bag (like 3 red, 5 green, 4 blue).
+"I'm not sure; I just operate the gondola lift. That does sound like something we'd have, though - this is Island Island, after all! I bet the gardener would know. He's on a different island, though - er, the small kind surrounded by water, not the floating kind. We really need to come up with a better naming scheme. Tell you what: if you can help me with something quick, I'll let you borrow my boat and you can go visit the gardener. I got all these scratchcards as a gift, but I can't figure out what I've won."
 
-For example, the record of a few games might look like this:
+The Elf leads you over to the pile of colorful cards. There, you discover dozens of scratchcards, all with their opaque covering already scratched off. Picking one up, it looks like each card has two lists of numbers separated by a vertical bar (|): a list of winning numbers and then a list of numbers you have. You organize the information into a table (your puzzle input).
 
-Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
-Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
-Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
-Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
-Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
-In game 1, three sets of cubes are revealed from the bag (and then put back again). The first set is 3 blue cubes and 4 red cubes; the second set is 1 red cube, 2 green cubes, and 6 blue cubes; the third set is only 2 green cubes.
+As far as the Elf has been able to figure out, you have to figure out which of the numbers you have appear in the list of winning numbers. The first match makes the card worth one point and each match after the first doubles the point value of that card.
 
-The Elf would first like to know which games would have been possible if the bag contained only 12 red cubes, 13 green cubes, and 14 blue cubes?
+For example:
 
-In the example above, games 1, 2, and 5 would have been possible if the bag had been loaded with that configuration. However, game 3 would have been impossible because at one point the Elf showed you 20 red cubes at once; similarly, game 4 would also have been impossible because the Elf showed you 15 blue cubes at once. If you add up the IDs of the games that would have been possible, you get 8.
+Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
+In the above example, card 1 has five winning numbers (41, 48, 83, 86, and 17) and eight numbers you have (83, 86, 6, 31, 17, 9, 48, and 53). Of the numbers you have, four of them (48, 83, 17, and 86) are winning numbers! That means card 1 is worth 8 points (1 for the first match, then doubled three times for each of the three matches after the first).
 
-Determine which games would have been possible if the bag had been loaded with only 12 red cubes, 13 green cubes, and 14 blue cubes. What is the sum of the IDs of those games?
+Card 2 has two winning numbers (32 and 61), so it is worth 2 points.
+Card 3 has two winning numbers (1 and 21), so it is worth 2 points.
+Card 4 has one winning number (84), so it is worth 1 point.
+Card 5 has no winning numbers, so it is worth no points.
+Card 6 has no winning numbers, so it is worth no points.
+So, in this example, the Elf's pile of scratchcards is worth 13 points.
 
-To play, please identify yourself via one of these services:
+Take a seat in the large pile of colorful cards. How many points are they worth in total?
 */
 
 use std::env::current_dir;
@@ -35,142 +41,85 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub const MAX_RED: i32 = 12;
-pub const MAX_GREEN: i32 = 13;
-pub const MAX_BLUE: i32 = 14;
-
 fn main() {
-    let mut winning_ids: Vec<i32> = vec![];
     let mut all_games: Vec<Game> = vec![];
     let cwd = current_dir().unwrap();
-    let input_fp = PathBuf::from_str((cwd.to_str().unwrap().to_owned() + "\\src\\2\\games.txt").as_str());
-    // println!("input_fp: {:?}",input_fp.clone().unwrap());
-    
+    let input_fp = PathBuf::from_str((cwd.to_str().unwrap().to_owned() + "\\src\\4\\cards").as_str());
     let raw_input = fs::read_to_string(input_fp.unwrap()).expect("File doesn't exist :'(");
-    // println!("{}", raw_input);
 
-    // parse games into Vec<Game>
-    for game in raw_input.lines() {
-        let colon_position = game.find(':').unwrap();
-        let space_position = game.find(' ').unwrap();
-        let game_id = &game[space_position..colon_position].trim().parse::<i32>().unwrap();
-        let mut temp_sets: Vec<Set> = vec![];
-        // println!("Game ID: {}", game_id);
+    // parse lines
+    for line in raw_input.lines() {
+        let space_idx = line.split(':').nth(0).unwrap().trim().find(' ').unwrap();
+        let id = &line.split(':').nth(0).unwrap()[space_idx..].trim().parse::<i32>().unwrap();
+        let mut winners: Vec<i32> = vec![];
+        let mut nums: Vec<i32> = vec![];
+        // println!("Game ID: {}",id);
 
-        for sets in game.split(':').nth(1).unwrap().split(';') {
-            let mut temp_set: Set = Set { red: 0, green: 0, blue: 0 };
-            if sets.contains(',') {
-                for set  in sets.split(',') {
-                    let (color, number) = parse_color_number(set);
-                    // println!("Color: {}", color);
-                    if color == "red" {
-                        // println!("found red!!");
-                        temp_set.red = number;
-                    } else if color == "green" {
-                        temp_set.green = number;
-                    } else if color == "blue" {
-                        temp_set.blue = number;
-                    }
-                }
-            } else {
-                let (color, number) = parse_color_number(sets);
-                if color == "red" {
-                    // println!("found red");
-                    temp_set.red = number;
-                } else if color == "green" {
-                    temp_set.green = number;
-                } else if color == "blue" {
-                    temp_set.blue = number;
-                }
-            }
-            temp_sets.push(temp_set);
-        }
-        all_games.push( Game { id: *game_id, sets: temp_sets })
-    }
-
-    // println!("All Games: {:?}",all_games);
-
-    for game in all_games.clone() {
-        let mut possible = true;
-        for set in game.sets {
-            if !is_set_possible(set) {
-                possible = false;
+        //parse for winners
+        for num in line.split(':').nth(1).unwrap().split('|').nth(0).unwrap().trim().split(' ') {
+            if num.contains(char::is_numeric) {
+                winners.push(num.parse::<i32>().unwrap());
             }
         }
-        if possible {
-            winning_ids.push(game.id);
-        }
-    }
 
-    println!("possible sum: {}", sum_ids(&winning_ids));
-    println!("number possible: {}", winning_ids.len());
-
-    let mut fewest_per_game: Vec<Fewest> = vec![];
-    for game in all_games {
-        let mut temp_set: Set = Set { red: 0, green: 0, blue: 0 };
-        for set in game.sets {
-            if set.red > temp_set.red {
-                temp_set.red = set.red;
-            }
-            if set.green > temp_set.green{
-                temp_set.green = set.green;
-            }
-            if set.blue > temp_set.blue {
-                temp_set.blue = set.blue;
+        //parse for nums
+        for num in line.split(':').nth(1).unwrap().split('|').nth(1).unwrap().trim().split(' ') {
+            if num.contains(char::is_numeric) {
+                nums.push(num.trim().parse::<i32>().unwrap());
             }
         }
-        fewest_per_game.push(Fewest { id: game.id, set: temp_set });
+        all_games.push(Game { id: *id, winners: winners, numbers: nums, score: None , multiplyer: None})
     }
 
-    let mut power: Vec<i32> = vec![];
-    for game in fewest_per_game {
-        power.push(game.set.blue * game.set.red * game.set.green);
+    // calculate score
+    for game in all_games.iter_mut() {
+        game.calculate_score();
     }
-    println!("sum of powers: {}", sum_ids(&power));
+    // println!("{:?}", all_games.clone());
+
+    // sum score
+    let mut sum = 0;
+    for game in all_games.iter_mut() {
+        sum += game.score.unwrap();
+    }
+    // println!("Sum is {}", sum);
+
+    // part 2 (card counting)
+    let mut card_counts: Vec<i32> = vec![1; 213];
+    let mut idx = 0;
+    // loop through cards and add to subsequent cards based on the current card count for this number
+    for card in all_games {
+        
+
+        idx +=1;
+    }
+
 }
 
-pub fn parse_color_number(color_in: &str) -> (&str, i32) {
-    let trimmed = color_in.trim();
-    let space_idx = trimmed.find(' ').unwrap();
-    let number = trimmed[..space_idx].parse().unwrap();
-    //let mut number = color_in.trim().split(' ').nth(0).unwrap().trim().parse::<i32>().unwrap();
-    let color: &str = color_in.trim().split(' ').nth(1).unwrap().trim();
-    return (color, number)
-}
-
-#[derive(Debug)]
-pub struct Fewest {
-    id: i32,
-    set: Set,
-}
-
-#[derive(Debug, Clone)]
-pub struct Set {
-    red: i32,
-    green: i32,
-    blue: i32,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug,Clone)]
 pub struct Game {
     id: i32,
-    sets: Vec<Set>,
+    winners: Vec<i32>,
+    numbers: Vec<i32>,
+    score: Option<i32>,
+    multiplyer: Option<usize>,
 }
 
-pub fn is_set_possible(set: Set) -> bool {
-    if set.red > MAX_RED ||
-        set.green > MAX_GREEN ||
-        set.blue > MAX_BLUE {
-            return false;
-    } else {
-        return true;
-    }
-}
+impl Game {
+    pub fn calculate_score(&mut self) {
+        let mut score = 0;
+        let mut first_passed = false;
 
-pub fn sum_ids(ids: &Vec<i32>) -> i32{
-    let mut final_tally: i32 = 0;
-    for id in ids {
-        final_tally += id;
+        for num in self.numbers.clone() {
+            if self.winners.contains(&num) {
+                if !first_passed {
+                    score = 1;
+                    first_passed = true;
+                } else {
+                    score *= 2;
+                }
+            }
+        }
+        self.score = Some(score);
     }
-    return final_tally;
 }
