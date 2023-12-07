@@ -1,16 +1,18 @@
+use core::num;
 use std::env::current_dir;
 use std::fmt::format;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::ops::Range;
 
 fn main() {
     let cwd = current_dir().unwrap();
-    let input_fp = PathBuf::from_str((cwd.to_str().unwrap().to_owned() + "\\src\\5\\test").as_str());
+    let input_fp = PathBuf::from_str((cwd.to_str().unwrap().to_owned() + "\\src\\5\\seeds").as_str());
     
     let raw_input = fs::read_to_string(input_fp.unwrap()).expect("File doesn't exist :'(");
 
-    let mut input_lines = raw_input.lines();
+    let mut input_lines = raw_input.lines().into_iter();
     let first_line = &input_lines.next().unwrap();
     let seeds_str = first_line.split(':').nth(1).unwrap().trim().split(' ');
     let seeds: Vec<i64> = seeds_str.into_iter()
@@ -18,10 +20,8 @@ fn main() {
         .collect();
 
     let _= input_lines.next(); //skip next empty line
-    println!(" printing line: {}",input_lines.nth(0).unwrap());
-
     let mut all_maps: Vec<Mapping> = vec![];
-    let mut temp_maps: Vec<DestinationMap> = vec![];
+
     // parse input into maps
     for current_line in input_lines.clone() {
         if current_line.contains("map") {
@@ -31,14 +31,10 @@ fn main() {
             
             // parse each source and dest mapping
             let mut temp_mapping: Mapping = Mapping { source_name: temp_source_name.to_string(), dest_name: temp_dest_name.to_string(), maps: vec![]};
-            // println!("Mapping: {:?}", temp_mapping);
 
             input_lines.next();
-            // println!("temp_lines: {:?}", input_lines);
             for each in input_lines.by_ref() {
-                // let mut curr_line = &input_lines.next().unwrap();
                 if each.is_empty() {
-                    // println!("Breaking on: {}", each);
                     break;
                 }
                 if each.contains(char::is_numeric) {
@@ -56,20 +52,40 @@ fn main() {
                         len: *parsed_nums.iter().nth(2).unwrap() });
                 }
             }
-            println!("pushing mapping: {:?}", temp_mapping);
+            // println!("pushing mapping: {:?}", temp_mapping);
             all_maps.push(temp_mapping);
         }
     }
-    // println!("Map: {:?}",all_maps);
+    
+    // first part
+    // let mut locations: Vec<i64> = vec![];
+    // for seed in seeds {
+    //     let location = all_maps.clone().iter().fold(seed, |acc: i64, m| {
+    //         let temp = map_seed_to_destination(acc, &m.maps);
+    //         temp
+    //     });
+    //     locations.push(location);
+    // }
 
-    for seed in seeds {
-        let _ = all_maps.clone().iter().fold(seed, |acc: i64, m| {
-            println!("{} -> {} ", m.source_name, m.dest_name);
-            let temp = map_seed_to_destination(acc, &m.maps);
-            temp
-        });
-        // println!("Seed: {}, final location: {}", seed, location);
+    // println!("Lowest location: {}", locations.iter().min().unwrap());
+
+    let mut locations: Vec<i64> = vec![];
+    let num_loops = seeds.len() / 2;
+    for i in 0..num_loops {
+        let seed_start = &seeds[i*2];
+        let seed_end = seed_start + &seeds[i*2 + 1];
+        println!("start: {}, end: {}",seed_start, seed_end);
+        for seed in *seed_start..seed_end {
+            let location = all_maps.clone()
+                .iter()
+                .fold(seed, |acc: i64, m| {
+                    let temp =  map_seed_to_destination(acc, &m.maps);
+                    temp
+                });
+            locations.push(location);
+        }
     }
+    println!("Lowest location: {:?}", locations);
 
 }
 
@@ -100,16 +116,16 @@ pub fn map_seed_to_destination(seed: i64, dest_map: &Vec<DestinationMap>) -> i64
     let mut map_val: Option<i64> = None;
 
     for map in dest_map {
-        if seed >= map.source_start && seed < map.source_start + map.len - 1 {
+        if seed >= map.source_start && seed <= map.source_start + map.len - 1 {
             map_val = Some(map.dest_start + (seed - map.source_start));
         }
     }
 
     if map_val == None {
-        println!("Map is none: {}", seed);
+        // println!("Map is none: {}", seed);
         return seed
     } else {
-        println!("Map existed: {} -> {}", seed, map_val.unwrap());
+        // println!("Map existed: {} -> {}", seed, map_val.unwrap());
         return map_val.unwrap()
     }
 }
