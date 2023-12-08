@@ -1,10 +1,8 @@
 use core::num;
 use std::env::current_dir;
-use std::fmt::format;
-use std::fs;
+use std::{fs, thread};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::ops::Range;
 
 fn main() {
     let cwd = current_dir().unwrap();
@@ -71,22 +69,48 @@ fn main() {
 
     let mut locations: Vec<i64> = vec![];
     let num_loops = seeds.len() / 2;
+    let mut handles = Vec::new();
     for i in 0..num_loops {
-        let seed_start = &seeds[i*2];
+        let seed_start = seeds[i*2];
         let seed_end = seed_start + &seeds[i*2 + 1];
+        let map_ref = all_maps.clone();
         println!("start: {}, end: {}",seed_start, seed_end);
-        for seed in *seed_start..seed_end {
-            let location = all_maps.clone()
-                .iter()
-                .fold(seed, |acc: i64, m| {
-                    let temp =  map_seed_to_destination(acc, &m.maps);
-                    temp
-                });
-            locations.push(location);
+
+        handles.push(thread::spawn( move || {
+            get_lowest_from_seeds(&seed_start.clone(), &seed_end.clone(), &map_ref)
+        }));
+        // for seed in seed_start..seed_end {
+        //     let location = all_maps.clone()
+        //         .iter()
+        //         .fold(seed, |acc: i64, m| {
+        //             let temp =  map_seed_to_destination(acc, &m.maps);
+        //             temp
+        //         });
+        //     locations.push(location);
+        // }
+    }
+    for handle in handles {
+        locations.push(handle.join().unwrap());
+    }
+
+    println!("Lowest overall location: {}", locations.iter().min().unwrap());
+}
+
+pub fn get_lowest_from_seeds(start_seed: &i64, end_seed: &i64, maps: &Vec<Mapping>) -> i64 {
+    let mut lowest_location: Option<i64> = None;
+    for seed in *start_seed..*end_seed {
+        let location = maps.clone()
+            .iter()
+            .fold(seed, |acc: i64, m| {
+                let temp =  map_seed_to_destination(acc, m.maps.clone());
+                temp
+            });
+        if lowest_location.is_none() || lowest_location.unwrap() > location {
+            lowest_location = Some(location);
         }
     }
-    println!("Lowest location: {:?}", locations);
-
+    // println!("Lowest Location: {}", lowest_location.unwrap());
+    return lowest_location.unwrap();
 }
 
 /*
@@ -112,7 +136,7 @@ pub struct DestinationMap {
     len: i64,
 }
 
-pub fn map_seed_to_destination(seed: i64, dest_map: &Vec<DestinationMap>) -> i64 {
+pub fn map_seed_to_destination(seed: i64, dest_map: Vec<DestinationMap>) -> i64 {
     let mut map_val: Option<i64> = None;
 
     for map in dest_map {
