@@ -1,8 +1,10 @@
 use core::num;
 use std::env::current_dir;
+use std::ops::Range;
 use std::{fs, thread};
 use std::path::PathBuf;
 use std::str::FromStr;
+use rayon::prelude::*;
 
 fn main() {
     let cwd = current_dir().unwrap();
@@ -67,33 +69,40 @@ fn main() {
 
     // println!("Lowest location: {}", locations.iter().min().unwrap());
 
-    let mut locations: Vec<i64> = vec![];
-    let num_loops = seeds.len() / 2;
-    let mut handles = Vec::new();
-    for i in 0..num_loops {
-        let seed_start = seeds[i*2];
-        let seed_end = seed_start + &seeds[i*2 + 1];
-        let map_ref = all_maps.clone();
-        println!("start: {}, end: {}",seed_start, seed_end);
-
-        handles.push(thread::spawn( move || {
-            get_lowest_from_seeds(&seed_start.clone(), &seed_end.clone(), &map_ref)
-        }));
-        // for seed in seed_start..seed_end {
-        //     let location = all_maps.clone()
-        //         .iter()
-        //         .fold(seed, |acc: i64, m| {
-        //             let temp =  map_seed_to_destination(acc, &m.maps);
-        //             temp
-        //         });
-        //     locations.push(location);
-        // }
+    let mut seed_ranges: Vec<Range<i64>> = vec![];
+    for idx in 0..(seeds.len()/2) {
+        seed_ranges.push(Range { 
+            start: seeds[idx*2],
+            end: seeds[idx*2] + seeds[idx*2 + 1],
+        })
     }
-    for handle in handles {
-        locations.push(handle.join().unwrap());
-    }
+    let min_location = seed_ranges
+        .into_par_iter()
+        .flat_map(|range| range.clone())
+        .map(|seed|{
+            all_maps.iter()
+                .fold(seed, |seed, map| map_seed_to_destination(seed, map.maps.clone()))
+        })
+        .min();
+    println!("Min Location: {}", min_location.unwrap());
+    // BRUTE FORCE METHOD
+    // let mut locations: Vec<i64> = vec![];
+    // let num_loops = seeds.len() / 2;
+    // let mut handles = Vec::new();
+    // for i in 0..num_loops {
+    //     let seed_start = seeds[i*2];
+    //     let seed_end = seed_start + &seeds[i*2 + 1];
+    //     let map_ref = all_maps.clone();
+    //     println!("start: {}, end: {}",seed_start, seed_end);
 
-    println!("Lowest overall location: {}", locations.iter().min().unwrap());
+    //     handles.push(thread::spawn( move || {
+    //         get_lowest_from_seeds(&seed_start.clone(), &seed_end.clone(), &map_ref)
+    //     }));
+    // }
+    // for handle in handles {
+    //     locations.push(handle.join().unwrap());
+    // }
+    //println!("Lowest overall location: {}", locations.iter().min().unwrap());
 }
 
 pub fn get_lowest_from_seeds(start_seed: &i64, end_seed: &i64, maps: &Vec<Mapping>) -> i64 {
@@ -112,14 +121,6 @@ pub fn get_lowest_from_seeds(start_seed: &i64, end_seed: &i64, maps: &Vec<Mappin
     // println!("Lowest Location: {}", lowest_location.unwrap());
     return lowest_location.unwrap();
 }
-
-/*
-Expecting Output from test:
-Seed 79, soil 81, fertilizer 81, water 81, light 74, temperature 78, humidity 78, location 82.
-Seed 14, soil 14, fertilizer 53, water 49, light 42, temperature 42, humidity 43, location 43.
-Seed 55, soil 57, fertilizer 57, water 53, light 46, temperature 82, humidity 82, location 86.
-Seed 13, soil 13, fertilizer 52, water 41, light 34, temperature 34, humidity 35, location 35.
-*/
 
 #[derive(Debug, Clone)]
 pub struct Mapping {
