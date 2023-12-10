@@ -1,10 +1,5 @@
 use std::{error::Error, str::FromStr, iter::Map, collections::BTreeMap};
 
-use glam::IVec2;
-use nom::Err;
-use nom_locate::LocatedSpan;
-use tracing::info;
-
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub enum Tile {
     Vertical,
@@ -19,7 +14,6 @@ pub enum Tile {
 
 impl FromStr for Tile {
     type Err = &'static str;
-
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // println!("Matching {}", s);
         match s {
@@ -36,7 +30,6 @@ impl FromStr for Tile {
     }
 }
 
-
 #[derive(Debug, Eq, PartialEq, Clone)]
 enum Direction {
     North,
@@ -45,36 +38,71 @@ enum Direction {
     West,
 }
 
-pub fn map_tile_new_direction(tile: Tile, dir: Direction) -> Result<Direction, &'static str>  {
-    match tile {
-        Tile::Vertical => {
-            if dir == Direction::North {Ok(Direction::South)}
-            else { Ok(Direction::North) }
+fn get_next_pos(
+    curr_x: &i32,
+    curr_y: &i32,
+    direction: &Direction,
+    map: &BTreeMap<(i32,i32), Tile>
+) -> Result<((i32,i32), Direction), &'static str> {
+    match direction {
+        Direction::North => {
+            match map.get(&(*curr_x, *curr_y)).unwrap() {
+                Tile::Vertical => { Ok(((*curr_x,curr_y+1), Direction::North)) },
+                Tile::NEBend => { Ok(((curr_x+1,*curr_y), Direction::West)) },
+                Tile::NWBend => { Ok(((curr_x-1,*curr_y), Direction::East)) },
+                _ => Err("shouldn't reach here")
+            }
         },
-        Tile::Horizontal => todo!(),
-        Tile::NEBend => todo!(),
-        Tile::NWBend => todo!(),
-        Tile::SWBend => todo!(),
-        Tile::SEBend => todo!(),
-        Tile::Ground => Err("shouldn't reach"),
-        Tile::Start => Err("shouldn't reach"),
+        Direction::South => {
+            match map.get(&(*curr_x, *curr_y)).unwrap() {
+                Tile::Vertical => { Ok(((*curr_x,curr_y-1), Direction::South)) },
+                Tile::SEBend => { Ok(((curr_x+1,*curr_y), Direction::West)) },
+                Tile::SWBend => { Ok(((curr_x-1,*curr_y), Direction::East)) },
+                _ => Err("shouldn't reach here")
+            }
+        },
+        Direction::East => {
+            match map.get(&(*curr_x, *curr_y)).unwrap() {
+                Tile::Horizontal => { Ok(((curr_x-1,*curr_y), Direction::East)) },
+                Tile::NEBend => { Ok(((*curr_x,curr_y-1), Direction::South)) },
+                Tile::SEBend => { Ok(((*curr_x,curr_y+1), Direction::North)) },
+                _ => Err("shouldn't reach here")
+            }
+        },
+        Direction::West => {
+            match map.get(&(*curr_x, *curr_y)).unwrap() {
+                Tile::Horizontal => { Ok(((curr_x+1,*curr_y), Direction::West)) },
+                Tile::SWBend => { Ok(((*curr_x,curr_y+1), Direction::North)) },
+                Tile::NWBend => { Ok(((*curr_x,curr_y-1), Direction::South)) },
+                _ => Err("shouldn't reach here")
+            }
+        },
     }
 }
 
-pub fn get_new_pos(
-    curr_x: i32,
-    curr_y: i32,
-    direction: Direction,
-    map: BTreeMap<(i32,i32), Tile>
-) -> ((i32,i32), Direction) {
-    match direction {
-        Direction::North => todo!(),
-        Direction::South => todo!(),
-        Direction::East => todo!(),
-        Direction::West => todo!(),
-    }
+fn move_from_first_pos(x: &i32, y: &i32, map: &BTreeMap<(i32,i32), Tile>) -> Result<((i32, i32), Direction), &'static str> {
+    // check each direction and return if finding valid move (include direction)
 
-    todo!("get new posiiton")
+    // check North
+    if map.get(&(*x,y-1)).unwrap() == &Tile::Vertical ||
+        map.get(&(*x,y-1)).unwrap() == &Tile::SEBend ||
+        map.get(&(*x,y-1)).unwrap() == &Tile::SWBend {
+        return Ok(((*x,y-1), Direction::South))
+    }
+    // check East
+    if map.get(&(x+1,*y)).unwrap() == &Tile::Horizontal ||
+        map.get(&(x+1,*y)).unwrap() == &Tile::NWBend ||
+        map.get(&(x+1,*y)).unwrap() == &Tile::SWBend {
+            return Ok(((x+1,*y), Direction::West))
+    }
+    // check South
+    if map.get(&(*x,y+1)).unwrap() == &Tile::Horizontal ||
+        map.get(&(*x,y+1)).unwrap() == &Tile::NWBend ||
+        map.get(&(*x,y+1)).unwrap() == &Tile::SWBend {
+            return Ok(((*x,y+1), Direction::North))
+    } else {
+        return Err("can't find first position");
+    }
 }
 
 #[tracing::instrument]
@@ -86,9 +114,11 @@ pub fn process(
     let overall_map = input.lines()
         .enumerate()
         .flat_map(|(y, line)| {
-            line.chars()
+            line.trim()
+                .chars()
                 .enumerate()
                 .map(move |(x, c)| {
+                    // println!("char: {}",c);
                     ((x as i32, y as i32), Tile::from_str(c.to_string().as_str()).unwrap())
                 })
         })
@@ -100,27 +130,23 @@ pub fn process(
         .map(|((x,y), _)| (*x,*y))
         .collect();
     let (start_x, start_y) = start[0];
-    println!("Start: {:?}", start);
+    // println!("Start: {:?}", start);
 
-    // find all connecting pipes from started
-    let mut loop_complete = false;
-    let mut current_x = &start_x;
-    let mut current_y = &start_y;
     let mut counter = 0;
-    while !loop_complete {
-
-        // change current_x and current_y
-
-
-        // end condition
-        if *current_x == start_x && *current_y == start_y {
-            loop_complete = true;
-        }
+    // move once
+    let  ((mut current_x, mut current_y), mut next_dir) = move_from_first_pos(&start_x, &start_y, &overall_map).unwrap();
+    // println!("1st move (X,Y) Tile: ({}, {}), {:?}, {:?}", &current_x, &current_y, overall_map.get(&(current_x,current_y)).unwrap(), &next_dir);
+    while current_x != start_x || current_y != start_y {
+        ((current_x, current_y), next_dir) = get_next_pos(&current_x, &current_y, &next_dir, &overall_map).unwrap();
+        // println!("Debug: {}, {}, {:?}, {:?}", &current_x, &current_y, overall_map.get(&(current_x,current_y)).unwrap(), &next_dir);
         counter += 1;
     }
-    // find loop from connecting pipes from start
 
-    // count steps from start
+    if (counter % 2 == 1) {
+        return Ok(format!("{}", counter/2 + 1))
+    } else {
+        return Ok(format!("{}", counter/2))
+    }
 
     Ok("()".to_string())
 }
@@ -145,19 +171,12 @@ mod tests {
 
     #[test]
     fn test_mapping() -> miette::Result<()> {
-        let input1 = ".....
-        .S-7.
-        .|.|.
-        .L-J.
-        .....";
-        
-        let expected_map1 = ".....
-        .012.
-        .1.3.
-        .234.
-        .....";
-
-        assert_eq!(expected_map1, process(input1)?);
+        let input1 = "7-F7-
+        .FJ|7
+        SJLL7
+        |F--J
+        LJ.LJ";
+        assert_eq!("8", process(input1).unwrap());
         Ok(())
     }
 }
