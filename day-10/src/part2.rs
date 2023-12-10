@@ -3,7 +3,7 @@
 pub fn process(
     _input: &str,
 ) -> miette::Result<String> {
-    todo!("day 01 - part 1");
+    todo!("day 0 0- part 1");
 }
 
 #[cfg(test)]
