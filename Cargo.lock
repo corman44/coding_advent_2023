@@ -276,6 +276,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "day-11"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "dhat",
+ "divan",
+ "itertools 0.12.0",
+ "miette",
+ "multidimension",
+ "nom",
+ "rstest",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "day-3"
 version = "0.1.0"
 dependencies = [
@@ -635,6 +652,12 @@ dependencies = [
  "once_cell",
  "sys-info",
 ]
+
+[[package]]
+name = "multidimension"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dcefda0cb5d9418e0480be67737531296a202d48130272a9f0298d568b38770"
 
 [[package]]
 name = "nom"
