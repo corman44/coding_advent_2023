@@ -2,7 +2,7 @@ use std::collections::{HashMap, BTreeMap};
 
 
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Direction {
     Up,
     Right,
@@ -10,7 +10,7 @@ enum Direction {
     Left,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Tile {
     Empty,
     MirrorRight,
@@ -19,9 +19,9 @@ enum Tile {
     HorizontalSplit,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Laser {
-    location: (i32, i32),
+    location: (u32, u32),
     direction: Direction,
 }
 
@@ -79,12 +79,13 @@ fn reflection_direction(dir_in: Direction, tile: Tile) -> (Direction, Option<Dir
     }
 }
 
+
 #[tracing::instrument]
 pub fn process(
     input: &str,
 ) -> miette::Result<String> {
 
-    let overall_map: BTreeMap<(i32, i32), Tile> = input.lines()
+    let overall_map: BTreeMap<(u32, u32), Tile> = input.lines()
         .enumerate()
         .flat_map(|(y, line)| {
             line.trim().chars()
@@ -97,28 +98,71 @@ pub fn process(
                         '-' => Tile::HorizontalSplit,
                         _ => Tile::Empty,
                     };
-                    ((x as i32,y as i32), t)
+                    ((x as u32,y as u32), t)
                 })
         })
         .collect();
 
-    let mut heat_map: Vec<(i32,i32)> = vec![];
+    let mut max_x: u32;
+    let mut max_y: u32;
+    let mut heat_map: Vec<(u32,u32)> = vec![];
     let mut lasers: Vec<Option<Laser>> = vec![];
+
+    // create starting laser and push to heatmap
     let starting_laser = Laser { location: (0,0), direction: Direction::Right };
     lasers.push(Some(starting_laser));
+    heat_map.push(lasers.clone().first().unwrap().unwrap().location);
 
     // loop through each laser while all of them are not None
-    while !lasers.iter().all(|l| l.is_none()) {
-        let _ = lasers.iter()
-            .map(|laser| {
+    println!("Starting While Loop:");
+    while !lasers.clone().iter().all(|l| l.is_none()) {
+        let _ = lasers.clone().iter()
+            .map(|mut laser| {
                 if laser.is_some() {
                     // maybe trade Vec<Option<Laser>> for HashMap or BTreeMap?
-                    // TODO: get 1 or 2 lasers + direction from the incoming laser
-                    // TODO: change current laser direction
-                    // TODO: push 2nd laser if it splits
+                    let (curr_x, curr_y) = laser.clone().unwrap().location;
+                    let (dir1, dir2) = reflection_direction(laser.as_ref().unwrap().direction, *overall_map.get(&(curr_x,curr_y)).unwrap());
+                    laser.unwrap().direction = dir1;
+                    let mut temp_x1: u32 = curr_x;
+                    let mut temp_y1: u32 = curr_y;
+                    let mut temp_x2: u32 = curr_x;
+                    let mut temp_y2: u32 = curr_y;
+
+                    heat_map.push((curr_x,curr_y));
+
+                    match dir1 {
+                        Direction::Up => temp_y1= curr_y,
+                        Direction::Right => temp_x1 = curr_x + 1,
+                        Direction::Down => temp_y1 = curr_y + 1,
+                        Direction::Left => temp_x1 = curr_x - 1
+                    };
+                    if temp_x1 < 0 || temp_x1 > 9 || temp_y1 < 0 || temp_y1 > 9 {
+                        laser = &None::<Laser>;
+                    } else {
+                        laser.unwrap().location.0 = temp_x1;
+                        laser.unwrap().location.1 = temp_y1;
+                    }
+
+                    if dir2.is_some() {
+
+                        match dir2.unwrap() {
+                            Direction::Up => temp_y2 -= 1,
+                            Direction::Right => temp_x2 += 1,
+                            Direction::Down => temp_y2 += 1,
+                            Direction::Left => temp_x2 -= 1
+                        };
+                        if temp_x1 < 0 || temp_x1 > 9 || temp_y1 < 0 || temp_y1 > 9 {
+                            laser = &None::<Laser>;
+                        } else {
+                            lasers.push(Some(Laser { location: (temp_x2, temp_y2), direction: dir2.unwrap() }));
+                        }
+                    }
                 }
             });
     }
+
+    println!("heat_map: {:?}",heat_map);
+    // TODO: calculate uniques in heat_map
 
     Ok("0".to_string())
 }
