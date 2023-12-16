@@ -111,7 +111,7 @@ pub fn process(
 ) -> miette::Result<String> {
 
     // create map from input Vec<Vec<Map<(x,y), Tile>
-    let overall_map = input.lines()
+    let overall_map: BTreeMap<(i32, i32), Tile> = input.lines()
         .enumerate()
         .flat_map(|(y, line)| {
             line.trim()
