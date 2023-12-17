@@ -18,6 +18,7 @@ dhat = { workspace = true }
 criterion = { workspace = true }
 divan = { workspace = true }
 rstest = { workspace = true }
+test-log = { workspace = true }
 
 [[bench]]
 name = "day-16-bench"

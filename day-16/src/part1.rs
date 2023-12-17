@@ -1,5 +1,6 @@
-use std::collections::{HashMap, BTreeMap};
 
+use tracing::{info, event, span, Level};
+use std::collections::{HashMap, BTreeMap};
 
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -84,6 +85,7 @@ fn reflection_direction(dir_in: Direction, tile: Tile) -> (Direction, Option<Dir
 pub fn process(
     input: &str,
 ) -> miette::Result<String> {
+    info!("starting process()");
 
     let overall_map: BTreeMap<(u32, u32), Tile> = input.lines()
         .enumerate()
@@ -115,7 +117,7 @@ pub fn process(
 
     // loop through each laser while all of them are not None
     println!("Starting While Loop:");
-    while !lasers.clone().iter().all(|l| l.is_none()) {
+    while !lasers.iter().all(|l| l.is_none()) {
         let _ = lasers.clone().iter()
             .map(|mut laser| {
                 if laser.is_some() {
@@ -154,13 +156,13 @@ pub fn process(
                         if temp_x1 < 0 || temp_x1 > 9 || temp_y1 < 0 || temp_y1 > 9 {
                             laser = &None::<Laser>;
                         } else {
+                            info!("{}", format!("new laser pushed: {}, {}", curr_x, curr_y));
                             lasers.push(Some(Laser { location: (temp_x2, temp_y2), direction: dir2.unwrap() }));
                         }
                     }
                 }
             });
     }
-
     println!("heat_map: {:?}",heat_map);
     // TODO: calculate uniques in heat_map
 
@@ -180,8 +182,9 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    #[test_log::test]
     fn test_process() -> miette::Result<()> {
+        info!("starting test");
         let input = r".|...\....
         |.-.\.....
         .....|-...
