@@ -72,12 +72,7 @@ fn reflection_direction(dir_in: Direction, tile: Tile) -> (Direction, Option<Dir
             Tile::HorizontalSplit => dir_out1 = dir_in,
         },
     };
-
-    if dir_out2.is_none() {
-        (dir_out1, None)
-    } else {
-        (dir_out1, dir_out2)
-    }
+    (dir_out1, dir_out2)
 }
 
 
@@ -107,13 +102,15 @@ pub fn process(
 
     let mut max_x: u32;
     let mut max_y: u32;
-    let mut heat_map: Vec<(u32,u32)> = vec![];
+    // TODO: Calculate max x,y
+    let mut heat_btmap: BTreeMap<(u32,u32), i32> = BTreeMap::new();
+    // let mut heat_map: Vec<(u32,u32)> = vec![];
     let mut lasers: Vec<Option<Laser>> = vec![];
 
     // create starting laser and push to heatmap
     let starting_laser = Laser { location: (0,0), direction: Direction::Right };
     lasers.push(Some(starting_laser));
-    heat_map.push(lasers.clone().first().unwrap().unwrap().location);
+    heat_btmap.entry(lasers.clone().first().unwrap().unwrap().location).or_insert(1);
 
     // loop through each laser while all of them are not None
     println!("Starting While Loop:");
@@ -121,8 +118,7 @@ pub fn process(
         let _ = lasers.clone().iter()
             .map(|mut laser| {
                 if laser.is_some() {
-                    // maybe trade Vec<Option<Laser>> for HashMap or BTreeMap?
-                    let (curr_x, curr_y) = laser.clone().unwrap().location;
+                    let (curr_x, curr_y) = laser.unwrap().location;
                     let (dir1, dir2) = reflection_direction(laser.as_ref().unwrap().direction, *overall_map.get(&(curr_x,curr_y)).unwrap());
                     laser.unwrap().direction = dir1;
                     let mut temp_x1: u32 = curr_x;
@@ -130,7 +126,8 @@ pub fn process(
                     let mut temp_x2: u32 = curr_x;
                     let mut temp_y2: u32 = curr_y;
 
-                    heat_map.push((curr_x,curr_y));
+                    let mut temp = heat_btmap.entry((curr_x,curr_y)).or_insert(0);
+                    *temp += 1;
 
                     match dir1 {
                         Direction::Up => temp_y1= curr_y,
@@ -163,8 +160,7 @@ pub fn process(
                 }
             });
     }
-    println!("heat_map: {:?}",heat_map);
-    // TODO: calculate uniques in heat_map
+    println!("heat_btmap length: {}",heat_btmap.len());
 
     Ok("0".to_string())
 }
