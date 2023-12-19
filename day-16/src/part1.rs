@@ -107,7 +107,9 @@ pub fn process(
 
     println!("max X {} max Y {}", max_x, max_y);
     let mut heat_btmap: BTreeMap<(i32,i32), i32> = BTreeMap::new();
+    let mut heatmap_count = 0;
     let mut active_lasers: Vec<Laser> = vec![];
+    let mut concurrent_checks = 0;
 
     // create starting laser and push to heatmap
     let starting_laser = Laser { location: (0,0), direction: Direction::Right };
@@ -115,11 +117,9 @@ pub fn process(
     heat_btmap.entry(active_lasers.clone().first().unwrap().location).or_insert(1);
 
     // loop through each laser while all of them are not None
-    let mut num_loops = 0;
+    let mut loop_count = 0;
     println!("Starting While Loop:");
     loop  {
-        num_loops += 1;
-        let mut curr_laser_num = 0;
         let mut next_lasers: Vec<Laser> = vec![];
         if active_lasers.is_empty() {
             break;
@@ -135,12 +135,6 @@ pub fn process(
 
             let temp = heat_btmap.entry((curr_x,curr_y)).or_insert(0);
             *temp += 1;
-
-
-            if num_loops < 100 {
-                println!("DEBUG {}: x,y: {},{}", curr_laser_num,curr_x,curr_y);
-                println!("DEBUG {}: dir1: {:?}, dir2: {:?}",curr_laser_num, dir1, dir2);
-            }
 
             match dir1 {
                 Direction::Up => temp_y1 -= 1,
@@ -163,13 +157,20 @@ pub fn process(
                     next_lasers.push(Laser { location: (temp_x2, temp_y2), direction: dir2.unwrap() });
                 }
             }
-            curr_laser_num += 1;
         }
         active_lasers = next_lasers;
+        if heat_btmap.len() > heatmap_count {
+            heatmap_count = heat_btmap.len();
+            concurrent_checks = 20;
+        } else if concurrent_checks <= 0 {
+            break;
+        } else {
+            concurrent_checks -= 1;
+        }
     }
     println!("heat_map length: {}",heat_btmap.len());
-
-    Ok("0".to_string())
+    // println!("{:?}",heat_btmap);
+    Ok((heat_btmap.len()).to_string())
 }
 
 #[cfg(test)]
@@ -203,3 +204,16 @@ mod tests {
         Ok(())
     }
 }
+
+/*
+.|...\....
+|.-.\.....
+.....|-...
+........|.
+..........
+.........\
+..../.\\..
+.-.-/..|..
+.|....-|.\
+..//.|....
+*/
