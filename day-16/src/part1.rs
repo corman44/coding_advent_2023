@@ -1,5 +1,6 @@
 
 use tracing::{info, event, span, Level};
+use core::num;
 use std::collections::{HashMap, BTreeMap};
 
 
@@ -20,9 +21,9 @@ enum Tile {
     HorizontalSplit,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct Laser {
-    location: (u32, u32),
+    location: (i32, i32),
     direction: Direction,
 }
 
@@ -82,7 +83,7 @@ pub fn process(
 ) -> miette::Result<String> {
     info!("starting process()");
 
-    let overall_map: BTreeMap<(u32, u32), Tile> = input.lines()
+    let overall_map: BTreeMap<(i32, i32), Tile> = input.lines()
         .enumerate()
         .flat_map(|(y, line)| {
             line.trim().chars()
@@ -95,72 +96,78 @@ pub fn process(
                         '-' => Tile::HorizontalSplit,
                         _ => Tile::Empty,
                     };
-                    ((x as u32,y as u32), t)
+                    ((x as i32,y as i32), t)
                 })
         })
         .collect();
 
-    let mut max_x: u32;
-    let mut max_y: u32;
-    // TODO: Calculate max x,y
-    let mut heat_btmap: BTreeMap<(u32,u32), i32> = BTreeMap::new();
-    // let mut heat_map: Vec<(u32,u32)> = vec![];
-    let mut lasers: Vec<Option<Laser>> = vec![];
+    let val = overall_map.iter().next_back().unwrap();
+    let max_x = val.0.0;
+    let max_y = val.0.1;
+
+    println!("max X {} max Y {}", max_x, max_y);
+    let mut heat_btmap: BTreeMap<(i32,i32), i32> = BTreeMap::new();
+    let mut active_lasers: Vec<Laser> = vec![];
 
     // create starting laser and push to heatmap
     let starting_laser = Laser { location: (0,0), direction: Direction::Right };
-    lasers.push(Some(starting_laser));
-    heat_btmap.entry(lasers.clone().first().unwrap().unwrap().location).or_insert(1);
+    active_lasers.push(starting_laser);
+    heat_btmap.entry(active_lasers.clone().first().unwrap().location).or_insert(1);
 
     // loop through each laser while all of them are not None
+    let mut num_loops = 0;
     println!("Starting While Loop:");
-    while !lasers.iter().all(|l| l.is_none()) {
-        let _ = lasers.clone().iter()
-            .map(|mut laser| {
-                if laser.is_some() {
-                    let (curr_x, curr_y) = laser.unwrap().location;
-                    let (dir1, dir2) = reflection_direction(laser.as_ref().unwrap().direction, *overall_map.get(&(curr_x,curr_y)).unwrap());
-                    laser.unwrap().direction = dir1;
-                    let mut temp_x1: u32 = curr_x;
-                    let mut temp_y1: u32 = curr_y;
-                    let mut temp_x2: u32 = curr_x;
-                    let mut temp_y2: u32 = curr_y;
+    loop  {
+        num_loops += 1;
+        let mut curr_laser_num = 0;
+        let mut next_lasers: Vec<Laser> = vec![];
+        if active_lasers.is_empty() {
+            break;
+        }
 
-                    let mut temp = heat_btmap.entry((curr_x,curr_y)).or_insert(0);
-                    *temp += 1;
+        for laser in active_lasers.iter() {
+            let (curr_x, curr_y) = laser.location;
+            let (dir1, dir2) = reflection_direction(laser.direction, *overall_map.get(&(curr_x,curr_y)).unwrap());
+            let mut temp_x1: i32 = curr_x;
+            let mut temp_y1: i32 = curr_y;
+            let mut temp_x2: i32 = curr_x;
+            let mut temp_y2: i32 = curr_y;
 
-                    match dir1 {
-                        Direction::Up => temp_y1= curr_y,
-                        Direction::Right => temp_x1 = curr_x + 1,
-                        Direction::Down => temp_y1 = curr_y + 1,
-                        Direction::Left => temp_x1 = curr_x - 1
-                    };
-                    if temp_x1 < 0 || temp_x1 > 9 || temp_y1 < 0 || temp_y1 > 9 {
-                        laser = &None::<Laser>;
-                    } else {
-                        laser.unwrap().location.0 = temp_x1;
-                        laser.unwrap().location.1 = temp_y1;
-                    }
+            let temp = heat_btmap.entry((curr_x,curr_y)).or_insert(0);
+            *temp += 1;
 
-                    if dir2.is_some() {
 
-                        match dir2.unwrap() {
-                            Direction::Up => temp_y2 -= 1,
-                            Direction::Right => temp_x2 += 1,
-                            Direction::Down => temp_y2 += 1,
-                            Direction::Left => temp_x2 -= 1
-                        };
-                        if temp_x1 < 0 || temp_x1 > 9 || temp_y1 < 0 || temp_y1 > 9 {
-                            laser = &None::<Laser>;
-                        } else {
-                            info!("{}", format!("new laser pushed: {}, {}", curr_x, curr_y));
-                            lasers.push(Some(Laser { location: (temp_x2, temp_y2), direction: dir2.unwrap() }));
-                        }
-                    }
+            if num_loops < 100 {
+                println!("DEBUG {}: x,y: {},{}", curr_laser_num,curr_x,curr_y);
+                println!("DEBUG {}: dir1: {:?}, dir2: {:?}",curr_laser_num, dir1, dir2);
+            }
+
+            match dir1 {
+                Direction::Up => temp_y1 -= 1,
+                Direction::Right => temp_x1 += 1,
+                Direction::Down => temp_y1 +=1,
+                Direction::Left => temp_x1 -=1,
+            };
+            if !(temp_x1 < 0 || temp_x1 > max_x || temp_y1 < 0 || temp_y1 > max_y) {
+                next_lasers.push( Laser { location: (temp_x1, temp_y1), direction: dir1 });
+            }
+
+            if dir2.is_some() {
+                match dir2.unwrap() {
+                    Direction::Up => temp_y2 -= 1,
+                    Direction::Right => temp_x2 += 1,
+                    Direction::Down => temp_y2 += 1,
+                    Direction::Left => temp_x2 -= 1
+                };
+                if !(temp_x2 < 0 || temp_x2 > max_x || temp_y2 < 0 || temp_y2 > max_y) {
+                    next_lasers.push(Laser { location: (temp_x2, temp_y2), direction: dir2.unwrap() });
                 }
-            });
+            }
+            curr_laser_num += 1;
+        }
+        active_lasers = next_lasers;
     }
-    println!("heat_btmap length: {}",heat_btmap.len());
+    println!("heat_map length: {}",heat_btmap.len());
 
     Ok("0".to_string())
 }
@@ -175,13 +182,14 @@ mod tests {
         assert_eq!((Direction::Left, None), reflection_direction(Direction::Left, Tile::HorizontalSplit));
         assert_eq!((Direction::Up, Some(Direction::Down)), reflection_direction(Direction::Right, Tile::VerticalSplit));
         assert_eq!((Direction::Left, Some(Direction::Right)), reflection_direction(Direction::Down, Tile::HorizontalSplit));
+        assert_eq!(reflection_direction(Direction::Left, Tile::VerticalSplit), (Direction::Up, Some(Direction::Down)));
         Ok(())
     }
 
     #[test_log::test]
     fn test_process() -> miette::Result<()> {
         info!("starting test");
-        let input = r".|...\....
+        let input = r#".|...\....
         |.-.\.....
         .....|-...
         ........|.
@@ -190,7 +198,7 @@ mod tests {
         ..../.\\..
         .-.-/..|..
         .|....-|.\
-        ..//.|....";
+        ..//.|...."#;
         assert_eq!("46", process(input)?);
         Ok(())
     }
